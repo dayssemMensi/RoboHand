@@ -1,26 +1,52 @@
 #include <Servo.h>
-Servo thumb, index, middle, ring, pinky;
+
+// Déclaration des servos
+Servo thumb;    // Pouce
+Servo index;    // Index
+Servo middle;   // Majeur
+Servo ring;     // Annulaire
+Servo pinky;    // Auriculaire
 
 void setup() {
-  thumb.attach(9);    // Pouce
-  index.attach(10);   // Index
-  middle.attach(11);  // Majeur
-  ring.attach(12);    // Annulaire
-  pinky.attach(13);   // Auriculaire
-  Serial.begin(9600); // Communication série
+  // Attache les servos aux broches PWM
+  thumb.attach(9);
+  index.attach(10);
+  middle.attach(11);
+  ring.attach(12);
+  pinky.attach(13);
+  
+  // Initialise la communication série
+  Serial.begin(9600);
+  while (!Serial); // Attend que le port série soit prêt (pour les cartes avec USB natif)
+  delay(2000);     // Délai de stabilisation (optionnel mais recommandé)
 }
 
 void loop() {
   if (Serial.available() > 0) {
     String data = Serial.readStringUntil('\n');
-    int angles[5];
-    sscanf(data.c_str(), "%d,%d,%d,%d,%d", &angles[0], &angles[1], &angles[2], &angles[3], &angles[4]);
+    data.trim(); // Supprime les espaces et retours chariot
     
-    // Contrôle des servos
-    thumb.write(angles[0]);
-    index.write(angles[1]);
-    middle.write(angles[2]);
-    ring.write(angles[3]);
-    pinky.write(angles[4]);
+    // Découpe la chaîne reçue (format: "angle1,angle2,angle3,angle4,angle5")
+    int angles[5];
+    int index = 0;
+    int lastComma = -1;
+    
+    for (int i = 0; i < data.length(); i++) {
+      if (data.charAt(i) == ',' || i == data.length() - 1) {
+        String angleStr = data.substring(lastComma + 1, i + (i == data.length() - 1 ? 1 : 0));
+        angles[index++] = angleStr.toInt();
+        lastComma = i;
+        if (index >= 5) break; // Sécurité contre les débordements
+      }
+    }
+    
+    // Applique les angles aux servos (avec vérification des limites)
+    if (index == 5) { // S'il y a bien 5 angles reçus
+      thumb.write(constrain(angles[0], 0, 180));
+      index.write(constrain(angles[1], 0, 180));
+      middle.write(constrain(angles[2], 0, 180));
+      ring.write(constrain(angles[3], 0, 180));
+      pinky.write(constrain(angles[4], 0, 180));
+    }
   }
 }
