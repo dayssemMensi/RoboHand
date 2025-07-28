@@ -1,3 +1,8 @@
-5 servos moteurs 
-arduino uno
-power power supply (5V/3A)
+Matériel Nécessaire
+Composant	     Quantité	Notes
+Servomoteurs (SG90)	5	Pour les 5 doigts
+Alimentation 5V/3A	1	Alim externe pour les servos
+Breadboard	        1	Pour les connexions
+Câbles jumper (M-M, M-F)	Pour branchements
+Arduino (Uno)	        1	Cerveau du système
+Caméra PC intégrée	1	Pour la détection des mains
