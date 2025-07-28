@@ -1,0 +1,17 @@
+#include <Servo.h> // Inclure la bibliothèque Servo
+
+Servo monServo;     // Créer un objet Servo
+int brocheServo = 9; // Broche de commande (PWM)
+
+void setup() {
+  monServo.attach(brocheServo); // Initialiser le servo
+}
+
+void loop() {
+  monServo.write(0);   // Position 0°
+  delay(1000);
+  monServo.write(90);  // Position 90°
+  delay(1000);
+  monServo.write(180); // Position 180°
+  delay(1000);
+}

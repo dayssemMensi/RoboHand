@@ -1,0 +1,3 @@
+5 servos moteurs 
+arduino uno
+power power supply (5V/3A)
