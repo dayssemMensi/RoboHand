@@ -1,0 +1,26 @@
+#include <Servo.h>
+Servo thumb, index, middle, ring, pinky;
+
+void setup() {
+  thumb.attach(9);    // Pouce
+  index.attach(10);   // Index
+  middle.attach(11);  // Majeur
+  ring.attach(12);    // Annulaire
+  pinky.attach(13);   // Auriculaire
+  Serial.begin(9600); // Communication série
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    String data = Serial.readStringUntil('\n');
+    int angles[5];
+    sscanf(data.c_str(), "%d,%d,%d,%d,%d", &angles[0], &angles[1], &angles[2], &angles[3], &angles[4]);
+    
+    // Contrôle des servos
+    thumb.write(angles[0]);
+    index.write(angles[1]);
+    middle.write(angles[2]);
+    ring.write(angles[3]);
+    pinky.write(angles[4]);
+  }
+}
