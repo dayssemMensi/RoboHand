@@ -1,109 +1,75 @@
-*Instalation de la bibliothèque:
-pip install opencv-python mediapipe numpy pyserial
-
-
-*code pour le OpenCV:
-import cv2, mediapipe as mp, serial, numpy as np
-
-# Initialisation
-mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(min_detection_confidence=0.8)
-arduino = serial.Serial('COM3', 9600)  # Changez COM3 si nécessaire
-
-cap = cv2.VideoCapture(0)  # Utilise la caméra du PC
-
-while True:
-    success, img = cap.read()
-    if not success: continue
-    
-    img = cv2.flip(img, 1)  # Miroir
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    results = hands.process(img_rgb)
-    
-    if results.multi_hand_landmarks:
-        for hand in results.multi_hand_landmarks:
-            # Points des doigts (extrémités)
-            fingers = [4, 8, 12, 16, 20]  # Pouce, Index, Majeur, Annulaire, Auriculaire
-            angles = []
-            
-            for fid in fingers:
-                y = hand.landmark[fid].y
-                angle = int(np.interp(y, [0.2, 0.8], [0, 180]))  # Conversion en angle
-                angles.append(angle)
-            
-            # Envoi à l'Arduino (ex: "90,45,120,30,180")
-            arduino.write(f"{','.join(map(str, angles))}\n".encode())
-            
-            # Dessiner les landmarks (optionnel)
-            mp.solutions.drawing_utils.draw_landmarks(img, hand, mp_hands.HAND_CONNECTIONS)
-    
-    cv2.imshow("Contrôle IA", img)
-    if cv2.waitKey(1) == ord('q'): break
-
-cap.release()
-cv2.destroyAllWindows()
-
-
-
-
-
-////////////////////////////////////////////////////
-# Détection Optimisée avec la caméra 
 import cv2
 import mediapipe as mp
-import numpy as np
-import serial
-from collections import deque
 
-# Configuration
-ARDUINO_PORT = 'COM3'  # Port série (vérifiez dans le Gestionnaire de périphériques)
-CAMERA_INDEX = 0       # 0 pour la caméra intégrée
-SMOOTHING_WINDOW = 5   # Nombre de frames pour lisser les mouvements
-
-# Initialisation
+# Initialisation MediaPipe
 mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(
-    static_image_mode=False,
-    max_num_hands=1,
-    min_detection_confidence=0.7,
-    min_tracking_confidence=0.7
-)
-arduino = serial.Serial(ARDUINO_PORT, 9600, timeout=1)
-cap = cv2.VideoCapture(CAMERA_INDEX)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)  # Réduire la résolution pour la fluidité
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-angle_history = deque(maxlen=SMOOTHING_WINDOW)
+hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.7)
+mp_draw = mp.solutions.drawing_utils
 
-while cap.isOpened():
-    success, img = cap.read()
-    if not success:
-        continue
-    
-    img = cv2.flip(img, 1)  # Effet miroir
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    results = hands.process(img_rgb)
-    
-    if results.multi_hand_landmarks:
-        landmarks = results.multi_hand_landmarks[0]
-        fingers = [4, 8, 12, 16, 20]  # Landmarks des bouts des doigts
-        angles = []
-        
-        for fid in fingers:
-            y = landmarks.landmark[fid].y
-            angle = int(np.interp(y, [0.2, 0.8], [0, 180]))  # Calibration
-            angles.append(angle)
-        
-        angle_history.append(angles)
-        smoothed_angles = np.mean(angle_history, axis=0).astype(int)
-        arduino.write(f"{','.join(map(str, smoothed_angles))}\n".encode())
-        
-        # Dessiner les landmarks (optionnel)
-        mp.solutions.drawing_utils.draw_landmarks(img, landmarks, mp_hands.HAND_CONNECTIONS)
-    
-    cv2.imshow("Contrôle Main Robotique", img)
-    if cv2.waitKey(1) == ord('q'):
+# Points clés des bouts de doigts
+finger_tips = [4, 8, 12, 16, 20]  # [Pouce, Index, Majeur, Annulaire, Auriculaire]
+
+# Ouvrir la caméra
+cap = cv2.VideoCapture(0)
+
+def get_finger_states(hand_landmarks, handedness_label):
+    states = []
+
+    # Détection du pouce : comparaison horizontale
+    if handedness_label == 'Right':
+        # Si main droite : pouce pointé vers la gauche -> tip.x < joint.x
+        if hand_landmarks.landmark[finger_tips[0]].x < hand_landmarks.landmark[finger_tips[0] - 1].x:
+            states.append(1)
+        else:
+            states.append(0)
+    else:  # Left
+        # Si main gauche : pouce pointé vers la droite -> tip.x > joint.x
+        if hand_landmarks.landmark[finger_tips[0]].x > hand_landmarks.landmark[finger_tips[0] - 1].x:
+            states.append(1)
+        else:
+            states.append(0)
+
+    # Autres doigts : comparaison verticale (y)
+    for tip_id in finger_tips[1:]:
+        if hand_landmarks.landmark[tip_id].y < hand_landmarks.landmark[tip_id - 2].y:
+            states.append(1)
+        else:
+            states.append(0)
+
+    return states
+
+while True:
+    success, frame = cap.read()
+    frame = cv2.flip(frame, 1)
+    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    result = hands.process(rgb)
+
+    if result.multi_hand_landmarks and result.multi_handedness:
+        for hand_landmarks, handedness in zip(result.multi_hand_landmarks, result.multi_handedness):
+            mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
+            # Déterminer main gauche ou droite
+            hand_label = handedness.classification[0].label  # 'Left' ou 'Right'
+
+            # Calcul des états
+            states = get_finger_states(hand_landmarks, hand_label)
+            state_labels = ['Pouce', 'Index', 'Majeur', 'Annulaire', 'Auriculaire']
+
+            # Afficher le label de la main
+            cv2.putText(frame, f"Main : {hand_label}", (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+
+            # Afficher l'état de chaque doigt
+            y = 60
+            for i, (label, state) in enumerate(zip(state_labels, states)):
+                cv2.putText(frame, f"{label}: {state}", (10, y),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                y += 30
+
+    cv2.imshow("Test caméra - Détection des doigts", frame)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
 cap.release()
 cv2.destroyAllWindows()
-arduino.close()
