@@ -1,0 +1,81 @@
+#include <Servo.h>
+
+#define NumberOfValsRec 5
+#define digitalsPerValRec 1
+
+Servo servoThumb;
+Servo servoIndex ;
+Servo servoMiddle ;
+Servo servoRing;
+Servo servoPinky;
+
+
+int valsRec[NumberOfValsRec];  
+int stringLength= (NumberOfValsRec* digitalsPerValRec)+1;//$00000
+int counter =0;
+bool counterStart = false ;
+String receivedString;
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  servoThumb.attach(3);
+  servoIndex.attach(5);
+  servoMiddle.attach(6);
+  servoRing.attach(9);
+  servoPinky.attach(10);
+
+}
+
+void receiveData() {
+  while (Serial.available())// python yab3thlna data bil character bil character 
+  {
+      char c= Serial.read();// na9ra data 
+      if (c=='$'){
+        counterStart = true;
+      }
+      if (counterStart ){
+        if (counter < stringLength){
+          receivedString= String (receivedString+c);
+          counter++;
+        }
+        if (counter>= stringLength){// chn3abby l array te3i 
+          for (int i =0 ; i<NumberOfValsRec;i++)
+          {
+            int num = (i*digitalsPerValRec)+1;
+            valsRec[i]=receivedString.substring(num,num+digitalsPerValRec).toInt();
+          
+          }
+          receivedString="";
+          counter=0;
+          counterStart= false;
+        }
+
+      }
+
+  }
+
+}
+void loop() {
+  // put your main code here, to run repeatedly:
+receiveData();
+if (valsRec[0]==1){
+  servoThumb.write(180);
+}
+else {servoThumb.write(0);}
+if (valsRec[1]==1){
+  servoIndex.write(180);
+}
+else {servoIndex.write(0);}
+if (valsRec[2]==1){
+  servoMiddle.write(180);
+}
+else {servoMiddle.write(0);}
+if (valsRec[3]==1){
+  servoRing.write(180);}
+else {servoRing.write(0);}
+if (valsRec[4]==1){
+  servoPinky.write(180);}
+else {servoPinky.write(0);}
+
+
+}
