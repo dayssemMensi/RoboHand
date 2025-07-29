@@ -35,7 +35,9 @@ void receiveData() {
       }
       if (counterStart ){
         if (counter < stringLength){
-          receivedString= String (receivedString+c);
+          //receivedString= String (receivedString+c);
+          receivedString += c;
+
           counter++;
         }
         if (counter>= stringLength){// chn3abby l array te3i 
