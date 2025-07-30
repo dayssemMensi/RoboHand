@@ -1,0 +1,10 @@
+Tu peux utiliser le module Python speech_recognition.
+
+pip install SpeechRecognition
+pip install pyaudio
+
+
+Si pyaudio pose problème sur Windows, installe-le via :
+
+pip install pipwin
+pipwin install pyaudio
