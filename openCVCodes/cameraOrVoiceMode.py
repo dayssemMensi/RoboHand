@@ -4,6 +4,11 @@ import pygame
 import speech_recognition as sr
 import sys
 import threading
+import serial
+import time
+
+arduino = serial.Serial('COM5', 9600)  # Remplace COM3 par le bon port
+time.sleep(2)    # Attendre que la connexion s'établisse
 
 ### ======== Partie 1 : Mode Caméra ======== ###
 def main_camera_mode():
@@ -11,8 +16,9 @@ def main_camera_mode():
     hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.7)
     mp_draw = mp.solutions.drawing_utils
     finger_tips = [4, 8, 12, 16, 20]
-
+    
     cap = cv2.VideoCapture(0)
+    
 
     def get_finger_states(hand_landmarks, handedness_label):
         states = []
@@ -36,6 +42,9 @@ def main_camera_mode():
                 mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
                 hand_label = handedness.classification[0].label
                 states = get_finger_states(hand_landmarks, hand_label)
+                data = "$" + "".join(str(bit) for bit in states)
+                arduino.write(data.encode())
+
                 state_labels = ['Pouce', 'Index', 'Majeur', 'Annulaire', 'Auriculaire']
                 cv2.putText(frame, f"Main : {hand_label}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
                 y = 60
